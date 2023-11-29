@@ -834,7 +834,7 @@ A JSON object representing a dictionary of accounts to CFToken objects. Includes
 Used to continue querying where we left off when paginating. Omitted if there are no more entries after this result.
 
 ### 1.7 Free CFTs
-When a holder creates a `CFTokenPage`, if the holder owns at most 2 items in the ledger including the new page, the account's owner reserve is treated as zero instead of the normal amount. This is following the status quo of how free trustlines work today.
+When a holder creates a `CFTokenPage`, if the holder owns at most 2 items in the ledger including the new page, the account's owner reserve is treated as zero instead of the normal amount. This is following the status quo of how free Trustlines work today.
 
 # 2. Appendices
 
@@ -850,21 +850,25 @@ That said, there is some overlap in functionality between the two. For example, 
 
 No, replacing Trustlines is not the intent behind CFTs. Instead, it's likely that CFTs and Trustline can and will coexist because they enable subtly different use-cases (see [FAQ 4.1](#41-are-cfts-different-from-trustlines), in particular the part about "rippling.").
 
-### 2.1.3. Are CFTs targeted for Mainnet or a Sidechain?
+### 2.1.3 Instead of CFTs, why not just make Trustlines smaller/better?
 
-This is still being considered and debated, but is ultimately up to Validators to decide. On the one hand, enabling CFTs on Mainnet would enable some new tokenization use-cases that could be problematic if Trustlines were to be used (see [FAQ 2.1.6](#216-an-early-draft-of-this-cft-proposal-stored-cftokens-in-a-paging-structure-similar-to-that-used-by-nfts-why-was-that-design-abandoned) for more details). On the other hand, adding CFTs introduces a new payment type into the payment engine, which complicates both the implementation of rippled itself, as well as XRPL tooling. 
+While it's true there are some proposals to make Trustlines more efficient (e.g., [optimize Trustline storage](https://github.com/XRPLF/rippled/issues/3866) and even (eliminate Custom Math)[https://github.com/XRPLF/rippled/issues/4120) from Trustlines), both of these are reasonably large changes that would change important aspect of the RippleState implementation. Any time we make changes like this, the risk is that these changes impact existing functionality in potentially unforeseen ways. The choice to build and implement CFT is ultimately a choice that balances this risk/reward tradeoff towards introducing somethign new to avoid breaking any existing functionality.
 
-Regardless, it might be desirable to let CFTs "bake" on a sidechain to prove their utility, and in-tandem try to [optimize trustlines storage](https://github.com/XRPLF/rippled/issues/3866) and even (eliminate Custom Math)[https://github.com/XRPLF/rippled/issues/4120) from trustlines.
+### 2.1.4. Are CFTs targeted for Mainnet or a Sidechain?
 
-### 2.1.4. Will CFTs be encoded into an STAmount, or is a new C++ object type required?
+This is still being considered and debated, but is ultimately up to Validators to decide. On the one hand, CFTs on Mainnet would enable some new tokenization use-cases that could be problematic if Trustlines were to be used (see [FAQ 2.1.7](#217-an-early-draft-of-this-cft-proposal-stored-cftokens-in-a-paging-structure-similar-to-that-used-by-nfts-why-was-that-design-abandoned) for more details). On the other hand, adding CFTs introduces a new payment type into the payment engine, which complicates both the implementation of rippled itself, and XRPL tooling. 
+
+In any event, we will first preview CFTs in a CFT-Devnet, and depending on what we learn there, revisit this issue then.
+
+### 2.1.5. Will CFTs be encoded into an STAmount, or is a new C++ object type required?
 
 CFTs will be able to be encoded in an `STAmount`. See [this gist](https://gist.github.com/sappenin/2c923bb249d4e9dd153e2e5f32f96d92) for more details.
 
-### 2.1.5. Is there a limit to the number of `CFTokenIssuance` or `CFToken` objects that a single account can hold?
+### 2.1.6. Is there a limit to the number of `CFTokenIssuance` or `CFToken` objects that a single account can hold?
 
 Practically speaking, no. The number of CFToken objects or CFTokenIssuance object that any account can hold is limited by the number of objects that can be stored in an owner directory, which is a very large number.
 
-### 2.1.6. An early draft of this CFT proposal stored `CFToken` objects in a paging structure similar to that used by NFTs. Why was that design abandoned?
+### 2.1.7. An early draft of this CFT proposal stored `CFToken` objects in a paging structure similar to that used by NFTs. Why was that design abandoned?
 
 The original design was optimized for on-ledger space savings, but it came with a tradeoff of increased complexity, both in terms of this specification and the implementation. Another consideration is the datapoint that many NFT developers struggled with the mechanism used to identify NFTs, some of which is a result of the NFT paging structure.
 
@@ -872,15 +876,15 @@ After analyzing on-ledger space requirements for (a) Trustlines, (b) `CFTokenPag
 
 With all that said, this decision is still open for debate. For example, in early 2024 the Ripple team plans to perform limit testing around Trustlines and the simpler CFT design to see how increased numbers of both types of ledger objects affect ledger performance. Once that data is complete, we'll likely revisit this design choice to either validate it or change it.
 
-### 2.1.7. Why is there no `CFTRedeem` Transaction?
+### 2.1.8. Why is there no `CFTRedeem` Transaction?
 
 This is because holders of a CFT can use a normal payment transaction to send CFT back to the issuer, thus "redeeming" it and removing it from circulation. Note that one consequence of this design choice is that CFT issuer accounts may not also hold `CFToken` objects because, if the issuer could do such a thing, it would be ambiguous where incoming CFT payments should go (i.e., should that payment be a redemption and reduce the total amount of outstanding issuance, or should that payment go into an issuer's `CFToken` amount, and still be considered as "in circulation." For simplicity, we chose the former design, restricting CFT issuers from having `CFToken` objects at all.
 
-### 2.1.8. Why can't CFToken Issuers also hold their own balances of CFT in a CFToken object?
+### 2.1.9. Why can't CFToken Issuers also hold their own balances of CFT in a CFToken object?
 
 See the question above. This design also helps enforce a security best practice where an issuing account should not also be used as an issuer's transactional account. Instead, any issuer should use a different XRPL account for non-issuance activity of their CFTs.
 
-### 2.1.9. Why not use the `DepositPreauth` transaction for Authorized CFT Functionality?
+### 2.1.10. Why not use the `DepositPreauth` transaction for Authorized CFT Functionality?
 
 For CFTokenIssuances that have the `lsfCFTRequireAuth` flag set, it is envisioned that a [DepositPreauth](https://xrpl.org/depositpreauth.html) transaction could be used with minor adaptations to distinguish between pre-authorized trust lines and pre-authorized CFTs. Alternatively, we might consider `deposit_preauth` objects might apply to both, under the assumption that a single issuer restricting trust lines will want to make the same restrictions around CFTs emanating from the same issuer account.
 
@@ -943,58 +947,33 @@ Issuer also has the ability to de-authorize a holder. In that case, if the holde
 
 ## 2.3. Appendix: Supplemental Information
 
-### 2.3.1 On-Ledger Storage Requirements
+### 2.3.1 Current Trust line Storage Requirements
 
-#### 2.3.1.1. `RippleState` Object (Size in Bytes)
+As described in issue [#3866](https://github.com/ripple/rippled/issues/3866#issue-919201191), the size of a [RippleState](https://xrpl.org/ripplestate.html#ripplestate) object is anywhere from 234 to 250 bytes plus a minimum of 32 bytes for object owner tracking, described in more detail here:
 
-As described in issue [#3866](https://github.com/ripple/rippled/issues/3866#issue-919201191), the size of a [RippleState](https://xrpl.org/ripplestate.html#ripplestate) object is anywhere from 202 to 218 bytes plus a minimum of 32 bytes for object owner tracking. In addition, each trustline actually requires entries in both participant's Owner Directories, among other bytes.
+```
+FIELD NAME          SIZE IN BITS
+================================
+LedgerEntryType               16
+Flags                         32 ("optional" but present in > 99.99% of cases)
+Balance                      384 (160–224 wasted)
+LowLimit                     384 (160–224 wasted)
+HighLimit                    384 (160–224 wasted)
+PreviousTxnID                256
+PreviousTxnLgrSeq             32
+LowNode                       64 (often has value 0)
+HighNode                      64 (often has value 0)
+--------------------------------
+REQUIRED SUBTOTAL:          1872 (234 bytes)
 
-**Required Fields**
+OPTIONAL FIELDS
+--------------------------------
+LowQualityIn                  32
+LowQualityOut                 32
+HighQualityIn                 32
+HighQualityOut                32
+--------------------------------
+MAXIMUM TOTAL SIZE:         2000 (250 bytes)
+```
 
-|        FIELD NAME | SIZE (BITS) | SIZE (BYTES) | NOTE                                                                                                                                | 
-|------------------:|:-----------:|:------------:|:------------------------------------------------------------------------------------------------------------------------------------|
-|   LedgerEntryType |     16      |      2       |                                                                                                                                     |
-|             Flags |     32      |      4       | ("optional" but present in > 99.99% of cases)                                                                                       |
-|           Balance |     384     |      48      | (160–224 wasted)                                                                                                                    |
-|          LowLimit |     384     |      48      | (160–224 wasted)                                                                                                                    |
-|         HighLimit |     384     |      48      | (160–224 wasted)                                                                                                                    |
-|           LowNode |     64      |      2       | often has value 0)                                                                                                                  |
-|          HighNode |     64      |      2       | often has value 0)                                                                                                                  |
-|     PreviousTxnID |     256     |      32      |                                                                                                                                     |
-| PreviousTxnLgrSeq |     32      |      2       |                                                                                                                                     |
-|  Field+Type Codes |     144     |      18      | For every field, there is a `FieldCode` and a `TypeCode`, taking 2 bytes in total (e.g., if there are 4 fields, we'll use 8 bytes). | 
-|               --- |     --      |     ---      |                                                                                                                                     |
-|             TOTAL |    1616     |     202      |                                                                                                                                     |
-
-**Optional Fields**
-
-|       FIELD NAME | SIZE (BITS) | SIZE (BYTES) | NOTE                                                                                                                                |   
-|-----------------:|:-----------:|:------------:|:------------------------------------------------------------------------------------------------------------------------------------|   
-|     LowQualityIn |     32      |      2       |                                                                                                                                     |   
-|    LowQualityOut |     32      |      4       | ("optional" but present in > 99.99% of cases)                                                                                       |   
-|    HighQualityIn |     32      |      48      | (160–224 wasted)                                                                                                                    |   
-|   HighQualityOut |     32      |      48      | (160–224 wasted)                                                                                                                    |   
-| Field+Type Codes |     64      |      8       | For every field, there is a `FieldCode` and a `TypeCode`, taking 2 bytes in total (e.g., if there are 4 fields, we'll use 8 bytes). |
-|              --- |     --      |     ---      |                                                                                                                                     |                    
-|            TOTAL |    1744     |     218      |                                                                                                                                     |                    
-
-#### 2.3.1.2. `CFToken` Object (Size in Bytes)
-
-|        FIELD NAME | SIZE (BITS) | SIZE (BYTES) |
-|------------------:|:-----------:|:------------:|
-|   LedgerEntryType |     16      |      2       |
-| CFTokenIssuanceID |     16      |      2       |
-|         CFTAmount |     16      |      2       |
-|      LockedAmount |     16      |      2       |
-|             Flags |     16      |      2       |
-|  Field+Type Codes |     16      |      2       |
-|               --- |     --      |     ---      |
-|             TOTAL |     16      |      2       |
-
-#### 2.3.1.3. Size Comparison
-
-|                Description |     CFT     |  Trustlines  | Trustlines are X-times Larger | 
-|---------------------------:|:-----------:|:------------:|:-----------------------------:|
-|  Bytes for holding 1 Token |  324 bytes  |  488 bytes   |             1.5x              |
-| Bytes for holding 10 Token | 2,430 bytes | 3,260 bytes  |             1.34x             |
-| Bytes for holding 32 Token | 7,578 bytes | 10,036 bytes |             1.32x             |
+TODO: Validate these numbers as they may be slightly low for trust lines. For example, in addition to the above data, trust lines require two directory entries for low/high nodes that get created for each trust line (i.e., for each RippleState object). This creates two root objects, each 98 bytes, adding 196 bytes in total per unique issuer/holder. Conversely, for CFTs, the page structure allows for up to 32 issuances to be held by a single token holder while only incurring around 102 bytes for a CFTokenPage. Thus, every time an account wants to hold a new token, the current Trustline implementation would require _at least_ 430 bytes every time. If we imagine a single account holding 20 tokens, CFTs would require ~1040 bytes, whereas trust lines would require ~8,600 bytes!
